@@ -1,17 +1,17 @@
 <template>
-    <swiper>
+    <swiper class="banner">
         <swiper-item v-for="item in banners">
             <a :href="item.link">
-                <img :src="item.image" alt="" @load="imageLoad">
+                <img :src="item.image" alt="">
             </a>
         </swiper-item>
     </swiper>
 </template>
 
 <script>
-    import {Swiper,SwiperItem} from  'components/common/swiper'
+    import {Swiper,SwiperItem} from 'components/common/swiper'
     export default {
-        name: "HomeSwiper",
+        name: "DetailSwiper",
         components:{
             Swiper,
             SwiperItem
@@ -24,22 +24,12 @@
                 }
             }
         },
-        data(){
-          return{
-              isLoad: false
-          }
-        },
-        methods:{
-            imageLoad(){
-                if (!this.isLoad){
-                    this.$emit('swiperImageLoad');
-                    this.isLoad=true
-                }
-            }
-        }
     }
 </script>
 
 <style scoped>
-
+    .banner{
+        height: 240px;
+        overflow: hidden;
+    }
 </style>

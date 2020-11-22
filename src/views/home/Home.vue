@@ -3,18 +3,26 @@
         <nav-bar class="home-nav">
             <div slot="center">购物车</div>
         </nav-bar>
+        <tab-control
+                :titles="['新款','流行','精选']"
+                @tabClick="tabClick"
+                ref="tabControl1"
+                class="tab-control" v-show="isTabFiexd"></tab-control>
         <scroll class="content"
                 ref="scroll"
                 :probe-type="3"
                 @controlScroll="controlScroll"
                 :pull-up-load="true" @pullingUp="loadMore">
-            <home-swiper :banners="banners"/>
+            <home-swiper :banners="banners" @swiperImageLoad="swiperImageLoad"/>
             <recommend-view :recommends="recommends"/>
             <feature-view/>
-            <tab-control class="tab-control" :titles="['新款','流行','精选']" @tabClick="tabClick"></tab-control>
+            <tab-control
+                    :titles="['新款','流行','精选']"
+                    @tabClick="tabClick"
+                    ref="tabControl2"></tab-control>
             <goods-list :goods="showGoods"></goods-list>
         </scroll>
-        <back-top @click.native="backTopClick" v-show="isShow"></back-top>
+        <back-top @click.native="backTop" v-show="isShowBackTop"></back-top>
     </div>
 </template>
 
@@ -30,17 +38,21 @@
     import BackTop from 'components/content/backTop/backTop'
 
     import {getHomeMultidata,getHomeGoods} from "../../network/home";
+    import {debounce} from "common/utils";
+    import {imgRefrashMixin,scrollTopMixin} from "common/mixins.js";
+
     export default {
         name: "Home",
+        mixins:[imgRefrashMixin,scrollTopMixin],
         data(){
             return{
                 goods:{
                   'pop':{
-                      page:0,list:[{img:'https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1604056884434&di=a3538d6ee54be48663b5bc07c950b874&imgtype=0&src=http%3A%2F%2Fb-ssl.duitang.com%2Fuploads%2Fitem%2F201303%2F19%2F20130319090518_cxVxR.jpeg',title:'goods',price:'15.00',cfav:'5'},
-                          {img:'https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1604056911388&di=89b52e634dda8f0d7a1f9ffba7c6b9f0&imgtype=0&src=http%3A%2F%2Fb-ssl.duitang.com%2Fuploads%2Fitem%2F201902%2F14%2F20190214093828_vmyhv.jpeg',title:'goods',price:'15.00',cfav:'5'}]
+                      page:0,list:[{img:'https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1604056884434&di=a3538d6ee54be48663b5bc07c950b874&imgtype=0&src=http%3A%2F%2Fb-ssl.duitang.com%2Fuploads%2Fitem%2F201303%2F19%2F20130319090518_cxVxR.jpeg',title:'goods',price:'15.00',cfav:'5',id:'1'},
+                          {img:'https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1604056911388&di=89b52e634dda8f0d7a1f9ffba7c6b9f0&imgtype=0&src=http%3A%2F%2Fb-ssl.duitang.com%2Fuploads%2Fitem%2F201902%2F14%2F20190214093828_vmyhv.jpeg',title:'goods',price:'15.00',cfav:'5',id:'2'}]
                   },
                     'new':{
-                      page:0,list:[{img:'https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1604056911388&di=89b52e634dda8f0d7a1f9ffba7c6b9f0&imgtype=0&src=http%3A%2F%2Fb-ssl.duitang.com%2Fuploads%2Fitem%2F201902%2F14%2F20190214093828_vmyhv.jpeg',title:'goods',price:'15.00',cfav:'5'}]
+                      page:0,list:[{img:'https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1604056911388&di=89b52e634dda8f0d7a1f9ffba7c6b9f0&imgtype=0&src=http%3A%2F%2Fb-ssl.duitang.com%2Fuploads%2Fitem%2F201902%2F14%2F20190214093828_vmyhv.jpeg',title:'goods',price:'15.00',cfav:'5',id:'3'}]
                   },
                     'sell':{
                       page:0,list:[]
@@ -88,7 +100,10 @@
 
                 ],
                 currentType:'pop',
-                isShow: false
+                tabOffsetTop: 0,
+                isTabFiexd: false,
+                saveY: '',
+                itemImgLister: null
             }
         },
         components:{
@@ -98,16 +113,28 @@
             NavBar,
             Scroll,
             TabControl,
-            BackTop,
             GoodsList
         },
         created() {
 
         },
+        destroyed(){
+            // console.log('destroyed');
+        },
+        activated(){
+            this.$refs.scroll.scrollTo(0,this.saveY,0);
+            this.$refs.scroll.refresh();
+        },
+        deactivated(){
+            this.saveY=this.$refs.scroll.getScrollY();
+            this.$bus.$off('itemImageLoad',this.itemImgListener);
+        },
         mounted(){
-            this.$bus.$on('itemImageLoad', () => {
-                this.$refs.scroll.scroll.refresh()
-            })
+            /*const refresh=debounce(this.$refs.scroll.refresh,2000);
+            this.itemImgListener=() => {
+                refresh()
+            };
+            this.$bus.$on('itemImageLoad', this.itemImgListener);*/
         },
         computed:{
           showGoods(){
@@ -119,6 +146,9 @@
              * 事件监听相关的说明
              *
              */
+            swiperImageLoad(){
+                this.tabOffsetTop=this.$refs.tabControl2.$el.offsetTop;
+            },
             tabClick(index){
                 switch (index) {
                     case 0:
@@ -131,12 +161,14 @@
                         this.currentType='sell'
                         break
                 }
-            },
-            backTopClick(){
-                this.$refs.scroll.scrollTo(0,0);
+                    this.$refs.tabControl1.currentIndex=index;
+                    this.$refs.tabControl2.currentIndex=index;
             },
             controlScroll(position){
-                this.isShow=(-position.y)>200
+                // 判断backtop是否显示
+                this.isShowBackTop=(-position.y)>200;
+                // 决定tabControl是否吸顶(position:fixed)
+                this.isTabFiexd=(-position.y)>150//this.tabOffsetTop;
             },
             loadMore(){
               // this.getHomeGoods(this.currentType);
@@ -170,11 +202,11 @@
     .home-nav{
         background-color: var(--color-tint);
         color: #ffffff;
-        position: fixed;
+        /*position: fixed;
         left: 0;
         top: 0;
         right: 0;
-        z-index: 9
+        z-index: 9*/
     }
     .content{
         position: absolute;
@@ -185,7 +217,7 @@
         overflow: hidden;
     }
     .tab-control{
-        position: sticky;
-        top: 44px;
+        position: relative;
+        z-index: 9;
     }
 </style>
